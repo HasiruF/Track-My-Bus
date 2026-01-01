@@ -10,6 +10,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'halt_details_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart'; 
+import 'UserProfileScreen.dart';
 
 
 class DriverHomePage extends StatefulWidget {
@@ -40,7 +41,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
       DriverTripsPage(userId: widget.userId), // iewing/managing trips
       DriverMapPage(userId: widget.userId), // New tab for Google Maps
       DriverClientsPage(driverId: widget.userId),
-      DriverProfilePage(userId: widget.userId), // Driver's profile page
+      DriverProfilePage(), // Driver's profile page
       
       
     ];
@@ -296,17 +297,80 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
   }
 }
 
-class DriverProfilePage extends StatelessWidget {
-  final String userId;
+class DriverProfilePage extends StatefulWidget {
+  const DriverProfilePage({super.key});
 
-  DriverProfilePage({required this.userId});
+  @override
+  _DriverProfilePageState createState() => _DriverProfilePageState();
+}
+
+class _DriverProfilePageState extends State<DriverProfilePage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String username = "";
+  String email = "";
+  String emergencyContact = "";
+  String profileImageUrl = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  void _loadUserProfile() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(user.uid).get();
+      setState(() {
+        username = userDoc["username"] ?? "";
+        email = userDoc["email"] ?? "";
+        emergencyContact = userDoc["emergency_contact"] ?? "";
+        profileImageUrl = userDoc["profile_image"] ?? "";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Your Profile Details, Driver ID: $userId',
-        style: TextStyle(fontSize: 18),
+    return Scaffold(
+      appBar: AppBar(title: Text("Profile")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 50,
+                backgroundImage: profileImageUrl.isNotEmpty
+                    ? NetworkImage(profileImageUrl)
+                    : null,
+                child: profileImageUrl.isEmpty
+                    ? Icon(Icons.person, size: 50)
+                    : null,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text("Username: $username", style: TextStyle(fontSize: 18)),
+            SizedBox(height: 10),
+            Text("Email: $email", style: TextStyle(fontSize: 18)),
+            SizedBox(height: 10),
+            Text("Emergency Contact: $emergencyContact",
+                style: TextStyle(fontSize: 18)),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => UserProfileScreen()),
+                ).then((_) => _loadUserProfile());
+              },
+              child: Text("Edit Profile"),
+            ),
+          ],
+        ),
       ),
     );
   }
